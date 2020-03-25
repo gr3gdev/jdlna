@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# START function
+Start() {
+  java -Xms64m -Xmx128m -cp "/var/lib/jdlna/*" org.dev.gr3g.jdlna.App > /dev/null 2>&1 & echo $! > /tmp/jdlna.pid
+  echo "jdlna started"
+}
+
+# STOP function
+Stop() {
+  pid=`cat /tmp/jdlna.pid`
+  `kill $pid`
+  echo "jdlna stopped"
+}
+
+if [[ $1 = "start" ]]; then
+  Start
+elif [[ $1 = "stop" ]]; then
+  Stop
+elif [[ $1 = "restart" ]]; then
+  Stop
+  Start
+else
+  echo "command invalide: jdlna start|stop|restart"
+fi

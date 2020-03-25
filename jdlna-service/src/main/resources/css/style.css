@@ -1,0 +1,60 @@
+body {
+	width: 90%;
+	min-height: 400px;
+	margin: auto;
+	font-size: 10pt;
+}
+
+table {
+	width: 100%;
+	margin: auto;
+	margin-top: 10px;
+	padding: 0px;
+	border-collapse: collapse;
+}
+
+td {
+	border: 1px solid black;
+	padding: 5px;
+}
+
+thead {
+	background-color: #FA2;
+	font-weight: bold;
+	font-size: 12pt;
+	color: #888;
+	text-shadow: 1px 1px #444;
+}
+
+button {
+	border-radius: 10px;
+	min-width: 100px;
+	height: 30px;
+}
+
+td input {
+	width: 98%;
+}
+
+h1 {
+	width: 100%;
+	text-align: center;
+	color: #AAA;
+	text-shadow: 2px 2px #444;
+}
+
+#main {
+	width: 800px;
+	height: 400px;
+	margin: auto;
+}
+
+#reload {
+	margin-top: 10px;
+	color: #888;
+	text-shadow: 1px 1px #444;
+}
+
+input[type="submit"] {
+	margin: 5px;
+}

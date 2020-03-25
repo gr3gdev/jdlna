@@ -1,0 +1,9 @@
+Package: jdlna
+Version: 0.1.0
+Section: base
+Prioriy: optional
+Architecture: all
+Depends: bash,openjdk-8-jre
+Maintainer: gregory.tardivel@gmail.com
+Description: Java Server DLNA
+Homepage: ''
