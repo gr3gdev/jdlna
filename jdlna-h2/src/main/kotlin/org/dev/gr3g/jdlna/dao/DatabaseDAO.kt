@@ -66,10 +66,10 @@ object DatabaseDAO {
             SQLUtils.execute(cnx, CREATE)
             insertConf(cnx, "port", "9300")
             insertConf(cnx, "name", "JDLNA")
-            insertConf(cnx, "folder.video", "")
-            insertConf(cnx, "folder.music", "")
-            insertConf(cnx, "folder.photo", "")
-            insertConf(cnx, "folder.cover", "")
+            insertConf(cnx, "folder.video", System.getenv("FOLDER_VIDEO") ?: "")
+            insertConf(cnx, "folder.music", System.getenv("FOLDER_MUSIC") ?: "")
+            insertConf(cnx, "folder.photo", System.getenv("FOLDER_PHOTO") ?: "")
+            insertConf(cnx, "folder.cover", System.getenv("FOLDER_COVER") ?: "")
         }
     }
 
@@ -108,7 +108,10 @@ object DatabaseDAO {
                 }
                 val strPath = pPath.toString()
                 id = generateID(strPath, size)
-                val parent = generateID(pPath.parent.toString(), 0)
+                var parent = 0
+                if (pPath.parent != null) {
+                    parent = generateID(pPath.parent.toString(), 0)
+                }
                 var idCover = 0
                 var mimeType = Files.probeContentType(pPath)
                 if (mimeType == null && pAttrs.isDirectory) {

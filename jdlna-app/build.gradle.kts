@@ -1,5 +1,8 @@
 plugins {
-    kotlin("jvm") version "1.3.61"
+    kotlin("jvm")
+    application
+    id("com.palantir.docker") version "0.25.0"
+    id("com.palantir.docker-run") version "0.25.0"
 }
 
 tasks {
@@ -8,6 +11,21 @@ tasks {
     }
     compileTestKotlin {
         kotlinOptions.jvmTarget = rootProject.extra.get("java.version") as String
+    }
+    application {
+        mainClassName = "org.dev.gr3g.jdlna.App"
+    }
+    docker {
+        files(distZip.get().outputs, file("Dockerfile"))
+        name = "jdlna"
+        setDockerfile(file("Dockerfile"))
+    }
+    dockerRun {
+        name = "jdlna"
+        image = "jdlna"
+        clean = true
+        daemonize = true
+        ports("9300:9300")
     }
 }
 

@@ -13,6 +13,10 @@ import java.util.logging.Logger
  */
 class MediaFileVisitor(private val parentPath: Path) : FileVisitor<Path> {
 
+    /** Logger.  */
+    private val logger = Logger
+            .getLogger(MediaFileVisitor::class.java.name)
+
     private fun treatFileOrDirectory(pPath: Path,
                                      pAttrs: BasicFileAttributes) {
         DatabaseDAO.insert(pPath, pAttrs)
@@ -38,21 +42,15 @@ class MediaFileVisitor(private val parentPath: Path) : FileVisitor<Path> {
 
     @Throws(IOException::class)
     override fun visitFileFailed(pFile: Path,
-                                 pExc: IOException): FileVisitResult {
+                                 pExc: IOException?): FileVisitResult {
         logger.warning("Visit File failed : $pFile")
         return FileVisitResult.CONTINUE
     }
 
     @Throws(IOException::class)
     override fun postVisitDirectory(pDir: Path,
-                                    pExc: IOException): FileVisitResult {
+                                    pExc: IOException?): FileVisitResult {
         return FileVisitResult.CONTINUE
-    }
-
-    companion object {
-        /** Logger.  */
-        private val logger = Logger
-                .getLogger(MediaFileVisitor::class.java.name)
     }
 
 }

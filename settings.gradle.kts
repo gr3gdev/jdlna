@@ -1,2 +1,6 @@
 rootProject.name = "jdlna"
-include("jdlna-bean","jdlna-h2","jdlna-db","jdlna-jetty","jdlna-service","jdlna-app")
+include("jdlna-bean")
+include("jdlna-h2")
+include("jdlna-jetty")
+include("jdlna-service")
+include("jdlna-app")

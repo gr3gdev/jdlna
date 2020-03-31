@@ -14,12 +14,21 @@ import java.util.logging.Logger
 class MediaLoader : Runnable {
 
     override fun run() {
-        val videoPath: Path = Paths
-                .get(DatabaseDAO.selectConf("folder.video"))
-        val imagePath: Path = Paths
-                .get(DatabaseDAO.selectConf("folder.photo"))
-        val musicPath: Path = Paths
-                .get(DatabaseDAO.selectConf("folder.music"))
+        val confVideoPath = DatabaseDAO.selectConf("folder.video")
+        var videoPath: Path? = null
+        if (confVideoPath.isNotEmpty()) {
+            Paths.get(confVideoPath)
+        }
+        val confPhotoPath = DatabaseDAO.selectConf("folder.photo")
+        val imagePath: Path? = null
+        if (confPhotoPath.isNotEmpty()) {
+            Paths.get(confPhotoPath)
+        }
+        val confMusicPath = DatabaseDAO.selectConf("folder.music")
+        val musicPath: Path? = null
+        if (confMusicPath.isNotEmpty()) {
+            Paths.get(confMusicPath)
+        }
         try {
             MediaFileUtils.init(videoPath, imagePath, musicPath)
         } catch (exc: IOException) {

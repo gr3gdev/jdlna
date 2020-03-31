@@ -5,6 +5,10 @@ buildscript {
     }
 }
 
+plugins {
+    kotlin("jvm") version "1.3.61" apply false
+}
+
 group = "com.github.gr3gdev"
 version = "0.1.0"
 

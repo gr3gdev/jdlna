@@ -2,9 +2,7 @@ package org.dev.gr3g.jdlna.dao
 
 import org.h2.tools.RunScript
 import java.io.IOException
-import java.io.InputStreamReader
 import java.io.StringReader
-import java.nio.charset.StandardCharsets
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
@@ -26,16 +24,15 @@ object SQLUtils {
     private var url: String? = null
 
     init {
-        val stream = SQLUtils::class.java.getResourceAsStream("/database.properties")
         try {
-            val resource = PropertyResourceBundle(InputStreamReader(stream, StandardCharsets.UTF_8))
-            val driver: String = resource.getString("database.driver")
+            val driver = System.getenv("DATABASE_DRIVER") ?: "org.h2.Driver"
             try {
                 Class.forName(driver)
             } catch (exc: ClassNotFoundException) {
                 logger.log(Level.SEVERE, "Erreur JDBC", exc)
             }
-            url = resource.getString("database.url")
+            url = System.getenv("DATABASE_URL")
+                    ?: "jdbc:h2:/data/jdlna/content;OPTIMIZE_REUSE_RESULTS=0;MAX_OPERATION_MEMORY=1000;MAX_MEMORY_UNDO=1000"
             for (idx in 0 until POOL_SIZE) {
                 POOL.addLast(DriverManager.getConnection(url))
             }
@@ -71,8 +68,7 @@ object SQLUtils {
                 params: Array<Any?>): ResultSet? {
         var result: ResultSet? = null
         try {
-            params.forEachIndexed { idx, any ->
-                val param = params[idx]
+            params.forEachIndexed { idx, param ->
                 if (param is String) {
                     params[idx] = param.replace("'", "''")
                 }

@@ -43,11 +43,17 @@ object MediaFileUtils {
         logger.info("Initalisation...")
         DatabaseDAO.clean()
         val idRoot = DatabaseDAO.insert(null, "ROOT", -1)
-        DatabaseDAO.insert(videoPath, "Vidéos", idRoot)
-        parse(videoPath)
-        DatabaseDAO.insert(musicPath, "Musics", idRoot)
-        parse(musicPath)
-        DatabaseDAO.insert(imagePath, "Images", idRoot)
-        parse(imagePath)
+        if (videoPath != null) {
+            DatabaseDAO.insert(videoPath, "Vidéos", idRoot)
+            parse(videoPath)
+        }
+        if (musicPath != null) {
+            DatabaseDAO.insert(musicPath, "Musics", idRoot)
+            parse(musicPath)
+        }
+        if (imagePath != null) {
+            DatabaseDAO.insert(imagePath, "Images", idRoot)
+            parse(imagePath)
+        }
     }
 }

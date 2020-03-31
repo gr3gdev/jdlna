@@ -26,18 +26,15 @@ class UpnpServiceConfig(pStreamListenPort: Int) : DefaultUpnpServiceConfiguratio
     override fun createStreamClient(): StreamClient<*> {
         val executorService: ExecutorService = this
                 .syncProtocolExecutorService
-        val config = StreamClientConfigurationImpl(
-                executorService)
-        logger.fine("Create stream client")
+        val config = StreamClientConfigurationImpl(executorService)
+        logger.info("Create stream client")
         return StreamClientImpl(config)
     }
 
-    override fun createStreamServer(
-            networkAddressFactory: NetworkAddressFactory): StreamServer<*> {
+    override fun createStreamServer(networkAddressFactory: NetworkAddressFactory): StreamServer<*> {
         val listenPort: Int = networkAddressFactory.streamListenPort
-        val config = AsyncServletStreamServerConfigurationImpl(
-                JettyServletContainer.INSTANCE, listenPort)
-        logger.fine("Create stream server")
+        val config = AsyncServletStreamServerConfigurationImpl(JettyServletContainer.INSTANCE, listenPort)
+        logger.info("Create stream server")
         return AsyncServletStreamServerImpl(config)
     }
 

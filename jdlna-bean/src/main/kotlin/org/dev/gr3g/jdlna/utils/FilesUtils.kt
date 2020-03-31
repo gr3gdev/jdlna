@@ -18,25 +18,20 @@ import java.util.logging.Logger
  * @author Gregory Tardivel
  */
 object FilesUtils {
+
     /** Logger.  */
     private val logger = Logger
             .getLogger(FilesUtils::class.java.name)
 
-    /** Conf file.  */
-    private val conf: Path = Paths.get("/etc/jdlna.conf")
-
     fun init() {
-        val jdlna = Paths.get("/etc/jdlna")
-        val logs = Paths.get("/var/log/jdlna")
+        val jdlna = Paths.get(System.getenv("INSTALL_DIR") ?: "/data/jdlna/")
+        val logs = Paths.get(System.getenv("LOG_DIR") ?: "/var/log/jdlna/")
         try {
             if (!Files.exists(jdlna)) {
                 Files.createDirectory(jdlna)
             }
             if (!Files.exists(logs)) {
                 Files.createDirectory(logs)
-            }
-            if (!Files.exists(conf)) {
-                createConfFile()
             }
         } catch (exc: IOException) {
             logger.log(Level.SEVERE, "Error user home", exc)
@@ -56,16 +51,6 @@ object FilesUtils {
             logger.log(Level.SEVERE, "Error generateID", exc)
         }
         return code
-    }
-
-    @Throws(IOException::class)
-    private fun createConfFile() {
-        val input = FilesUtils::class.java
-                .getResourceAsStream("/model/jdlna.conf")
-        input.use {
-            Files.copy(it, conf)
-        }
-        logger.info("Conf file initialized : $conf")
     }
 
     fun getFile(path: String): InputStream {

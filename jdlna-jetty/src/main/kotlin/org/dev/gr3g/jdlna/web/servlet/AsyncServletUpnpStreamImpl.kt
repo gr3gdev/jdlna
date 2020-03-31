@@ -3,7 +3,6 @@ package org.dev.gr3g.jdlna.web.servlet
 import org.dev.gr3g.jdlna.bean.MediaType
 import org.dev.gr3g.jdlna.bean.Upnp
 import org.dev.gr3g.jdlna.dao.DatabaseDAO
-import org.dev.gr3g.jdlna.utils.FilesUtils
 import org.dev.gr3g.jdlna.utils.MediaFileUtils
 import org.fourthline.cling.model.message.Connection
 import org.fourthline.cling.model.message.StreamRequestMessage
@@ -30,7 +29,12 @@ import javax.servlet.http.HttpServletResponse
 class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
                                  asyncContext: AsyncContext?, request: HttpServletRequest?) : AsyncServletUpnpStream(protocolFactory, asyncContext, request) {
 
+    /** Logger.  */
+    private val logger = Logger
+            .getLogger(AsyncServletUpnpStreamImpl::class.java.name)
+
     private var message: String? = ""
+
     override fun createConnection(): Connection {
         return AsyncServletConnection(getRequest())
     }
@@ -38,18 +42,21 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
     override fun run() {
         try {
             val requestMessage = readRequestMessage()
-            LOGGER.fine(String.format("Processing new request message: %s",
+            logger.fine(String.format("Processing new request message: %s",
                     requestMessage.toString()))
             val path = getRequest().pathInfo
-            LOGGER.fine(String.format("process() PATH: %s", path))
+            logger.fine(String.format("process() PATH: %s", path))
             when {
                 path == Upnp.NAMESPACE + "/" -> {
                     processIndex()
                 }
-                path.startsWith(Upnp.NAMESPACE + "/js") -> {
+                path == Upnp.NAMESPACE + "/api/latest/conf" -> {
+                    processRestConf()
+                }
+                path.contains(".js") -> {
                     processStatic(path, "text/javascript")
                 }
-                path.startsWith(Upnp.NAMESPACE + "/css") -> {
+                path.contains(".css") -> {
                     processStatic(path, "text/css")
                 }
                 path.startsWith(Upnp.NAMESPACE + "/file") -> {
@@ -67,17 +74,17 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
             }
             message = ""
         } catch (exc: IOException) {
-            LOGGER.warning("Exception occurred during UPnP stream processing : "
+            logger.warning("Exception occurred during UPnP stream processing : "
                     + exc.message)
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.log(Level.SEVERE, "Error", exc)
+            if (logger.isLoggable(Level.FINE)) {
+                logger.log(Level.SEVERE, "Error", exc)
             }
             if (!this.response.isCommitted) {
-                LOGGER.warning(
+                logger.warning(
                         "Response hasn't been committed, returning INTERNAL SERVER ERROR to client")
                 this.response.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
             } else {
-                LOGGER.info(
+                logger.info(
                         "Could not return INTERNAL SERVER ERROR to client, response was already committed")
             }
             message = exc.message
@@ -141,7 +148,7 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
             MediaFileUtils.update()
             "Rechargement des fichiers terminés"
         } catch (exc: IOException) {
-            LOGGER.log(Level.SEVERE, "Error update", exc)
+            logger.log(Level.SEVERE, "Error update", exc)
             "Erreur: " + exc.message
         }
         processIndex()
@@ -149,17 +156,15 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
 
     @Throws(IOException::class)
     private fun processStatic(path: String, mimeType: String) {
-        val pathStatic: String = path.substring(Upnp.NAMESPACE.length)
-        val content: String = FilesUtils.getFileContent(pathStatic)
+        val pathStatic: String = "/front" + path.substring(Upnp.NAMESPACE.length)
+        val content: String = javaClass.getResource(pathStatic).readText()
         responseMessage = StreamResponseMessage(content,
                 MimeType.valueOf(mimeType))
         sendResponse()
     }
 
     @Throws(IOException::class)
-    private fun processIndex() {
-        val index: String = FilesUtils.getFileContent("/pages/index.html")
-        val html = StringBuilder()
+    private fun processRestConf() {
         val nbVideos: Int = DatabaseDAO.countByType(MediaType.VIDEO)
         val nbMusics: Int = DatabaseDAO.countByType(MediaType.MUSIC)
         val nbImages: Int = DatabaseDAO.countByType(MediaType.IMAGE)
@@ -168,11 +173,22 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
         val folderMusic: String = DatabaseDAO.selectConf("folder.music")
         val folderPhoto: String = DatabaseDAO.selectConf("folder.photo")
         val folderCover: String = DatabaseDAO.selectConf("folder.cover")
-        html.append(String.format(index, message, folderVideo, nbVideos,
-                folderMusic, nbMusics, folderPhoto, nbImages, folderCover,
-                nbCovers))
-        responseMessage = StreamResponseMessage(html.toString(),
-                MimeType.valueOf("text/html"))
+        val json = "{ \"video\": { \"path\": \"$folderVideo\", \"count\": $nbVideos }, " +
+                "\"music\": { \"path\": \"$folderMusic\", \"count\": $nbMusics }, " +
+                "\"photo\": { \"path\": \"$folderPhoto\", \"count\": $nbImages }, " +
+                "\"cover\": { \"path\": \"$folderCover\", \"count\": $nbCovers } }"
+        responseMessage = StreamResponseMessage(json, MimeType.valueOf("application/json"))
+    }
+
+    @Throws(IOException::class)
+    private fun processIndex() {
+        val index = javaClass.getResource("/front/index.html").readText()
+        responseMessage = if (index.isEmpty()) {
+            logger.warning("index.html_old not loaded")
+            null
+        } else {
+            StreamResponseMessage(index, MimeType.valueOf("text/html"))
+        }
         sendResponse()
     }
 
@@ -192,8 +208,8 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
                     "filename=" + path.fileName)
             val out: OutputStream = this.response.outputStream
             input.use {
-                if (LOGGER.isLoggable(Level.FINE)) {
-                    LOGGER.fine(String.format("Stream du fichier %s", stream))
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.fine(String.format("Stream du fichier %s", stream))
                 }
 
                 // final byte[] bytes = new byte[BUFFER];
@@ -213,14 +229,11 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
                 }
             }
         } else {
-            LOGGER.warning("ID is not an integer: $stream")
+            logger.warning("ID is not an integer: $stream")
         }
     }
 
     companion object {
-        /** Logger.  */
-        private val LOGGER = Logger
-                .getLogger(AsyncServletUpnpStreamImpl::class.java.name)
         private const val BUFFER = 1024 * 100
     }
 }

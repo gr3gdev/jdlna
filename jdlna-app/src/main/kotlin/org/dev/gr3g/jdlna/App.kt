@@ -1,11 +1,15 @@
 package org.dev.gr3g.jdlna
 
 import org.dev.gr3g.jdlna.dao.DatabaseDAO
+import org.dev.gr3g.jdlna.logging.format.LogFormatter
 import org.dev.gr3g.jdlna.utils.FilesUtils
 import org.dev.gr3g.jdlna.worker.MediaLoader
 import org.dev.gr3g.jdlna.worker.UpnpServer
 import java.io.IOException
+import java.util.logging.FileHandler
+import java.util.logging.Level
 import java.util.logging.LogManager
+import java.util.logging.Logger
 import kotlin.system.exitProcess
 
 /** @author Gregory Tardivel
@@ -37,8 +41,16 @@ object App {
 
     init {
         try {
-            logManager.readConfiguration(
-                    App::class.java.getResourceAsStream("/jdlna-logging.properties"))
+            val globalLogger = Logger.getLogger("global")
+            globalLogger.level = Level.INFO
+            val pattern = (System.getenv("LOG_DIR") ?: "/var/log/jdlna") + "/jdlna%u.log"
+            val fileHandler = FileHandler(pattern, 500000, 5)
+            fileHandler.formatter = LogFormatter()
+            fileHandler.level = Level.INFO
+            globalLogger.addHandler(fileHandler)
+            logManager.loggerNames.toList().forEach {
+                logManager.getLogger(it).addHandler(fileHandler)
+            }
         } catch (exc: SecurityException) {
             exitProcess(1)
         } catch (exc: IOException) {
