@@ -32,8 +32,6 @@ tasks {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.fourthline.cling:cling-core:${rootProject.extra.get("cling.version")}")
-    implementation(project(":jdlna-bean"))
-    implementation(project(":jdlna-h2"))
-    implementation(project(":jdlna-service"))
+    implementation(project(":jdlna-core"))
     implementation(project(":jdlna-jetty"))
 }

@@ -6,8 +6,9 @@ ENV DATABASE_DRIVER "org.h2.Driver"
 ENV DATABASE_URL "jdbc:h2:/data/jdlna/content;OPTIMIZE_REUSE_RESULTS=0;MAX_OPERATION_MEMORY=1000;MAX_MEMORY_UNDO=1000"
 ENV FOLDER_VIDEO "/media/videos"
 ENV FOLDER_MUSIC "/media/musics"
-ENV FOLDER_PHOTO "/media/photos"
+ENV FOLDER_IMAGE "/media/images"
 ENV FOLDER_COVER "/media/covers"
+ENV PORT 9300
 # Create directories
 RUN mkdir -p /data && \
     mkdir -p /data/jdlna && \

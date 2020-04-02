@@ -1,12 +1,14 @@
 package org.dev.gr3g.jdlna.web.servlet
 
-import org.dev.gr3g.jdlna.bean.MediaType
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.dev.gr3g.jdlna.bean.ConfigModel
 import org.dev.gr3g.jdlna.bean.Upnp
 import org.dev.gr3g.jdlna.dao.DatabaseDAO
 import org.dev.gr3g.jdlna.utils.MediaFileUtils
 import org.fourthline.cling.model.message.Connection
 import org.fourthline.cling.model.message.StreamRequestMessage
 import org.fourthline.cling.model.message.StreamResponseMessage
+import org.fourthline.cling.model.message.header.ContentTypeHeader
 import org.fourthline.cling.protocol.ProtocolFactory
 import org.fourthline.cling.transport.impl.AsyncServletUpnpStream
 import org.seamless.util.MimeType
@@ -14,6 +16,7 @@ import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.logging.Level
@@ -33,6 +36,7 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
     private val logger = Logger
             .getLogger(AsyncServletUpnpStreamImpl::class.java.name)
 
+    private val mapper = ObjectMapper()
     private var message: String? = ""
 
     override fun createConnection(): Connection {
@@ -45,13 +49,20 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
             logger.fine(String.format("Processing new request message: %s",
                     requestMessage.toString()))
             val path = getRequest().pathInfo
-            logger.fine(String.format("process() PATH: %s", path))
+            val method = getRequest().method
+            logger.fine(String.format("process(%s) PATH: %s", method, path))
             when {
-                path == Upnp.NAMESPACE + "/" -> {
+                path == Upnp.NAMESPACE || path == Upnp.NAMESPACE + "/" -> {
                     processIndex()
                 }
-                path == Upnp.NAMESPACE + "/api/latest/conf" -> {
+                path == Upnp.NAMESPACE + "/api/latest/conf" && method == "GET" -> {
                     processRestConf()
+                }
+                path == Upnp.NAMESPACE + "/api/latest/reload" && method == "POST" -> {
+                    processReload()
+                }
+                path == Upnp.NAMESPACE + "/api/latest/save" && method == "POST" -> {
+                    processSave(requestMessage.body)
                 }
                 path.contains(".js") -> {
                     processStatic(path, "text/javascript")
@@ -59,14 +70,20 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
                 path.contains(".css") -> {
                     processStatic(path, "text/css")
                 }
+                path.contains(".png") -> {
+                    processStatic(path, "image/png")
+                }
+                path.contains(".ttf") -> {
+                    processStatic(path, "image/ttf")
+                }
+                path.contains(".woff") -> {
+                    processStatic(path, "application/font-woff")
+                }
+                path.contains(".woff2") -> {
+                    processStatic(path, "application/font-woff2")
+                }
                 path.startsWith(Upnp.NAMESPACE + "/file") -> {
                     processFileStreaming()
-                }
-                path.startsWith(Upnp.NAMESPACE + "/reload") -> {
-                    processReload()
-                }
-                path.startsWith(Upnp.NAMESPACE + "/save") -> {
-                    processSave()
                 }
                 else -> {
                     processDefault(requestMessage)
@@ -110,36 +127,15 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
     }
 
     @Throws(IOException::class)
-    private fun processSave() {
-        val port = getRequest().getParameter("port")
-        if (port != null) {
-            DatabaseDAO.updateConf("port", port)
+    private fun processSave(body: Any) {
+        if (body is ByteArray) {
+            val conf = mapper.readValue(body, ConfigModel::class.java)
+            DatabaseDAO.updateConf(DatabaseDAO.FOLDER_IMAGE, conf.photo.path)
+            DatabaseDAO.updateConf(DatabaseDAO.FOLDER_VIDEO, conf.video.path)
+            DatabaseDAO.updateConf(DatabaseDAO.FOLDER_MUSIC, conf.music.path)
+            DatabaseDAO.updateConf(DatabaseDAO.FOLDER_COVER, conf.cover.path)
+            processReload()
         }
-        val name = getRequest().getParameter("name")
-        if (name != null) {
-            DatabaseDAO.updateConf("name", name)
-        }
-        val folderVideo = getRequest()
-                .getParameter("folder.video")
-        if (folderVideo != null) {
-            DatabaseDAO.updateConf("folder.video", folderVideo)
-        }
-        val folderPhoto = getRequest()
-                .getParameter("folder.photo")
-        if (folderPhoto != null) {
-            DatabaseDAO.updateConf("folder.photo", folderPhoto)
-        }
-        val folderMusic = getRequest()
-                .getParameter("folder.music")
-        if (folderMusic != null) {
-            DatabaseDAO.updateConf("folder.music", folderMusic)
-        }
-        val folderCover = getRequest()
-                .getParameter("folder.cover")
-        if (folderCover != null) {
-            DatabaseDAO.updateConf("folder.cover", folderCover)
-        }
-        processReload()
     }
 
     @Throws(IOException::class)
@@ -151,13 +147,15 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
             logger.log(Level.SEVERE, "Error update", exc)
             "Erreur: " + exc.message
         }
-        processIndex()
+        responseMessage = StreamResponseMessage("{\"status\":\"$message\"}".toByteArray(StandardCharsets.UTF_8),
+                ContentTypeHeader("application/json;charset:UTF-8"))
+        sendResponse()
     }
 
     @Throws(IOException::class)
     private fun processStatic(path: String, mimeType: String) {
         val pathStatic: String = "/front" + path.substring(Upnp.NAMESPACE.length)
-        val content: String = javaClass.getResource(pathStatic).readText()
+        val content = javaClass.getResource(pathStatic).readBytes()
         responseMessage = StreamResponseMessage(content,
                 MimeType.valueOf(mimeType))
         sendResponse()
@@ -165,24 +163,15 @@ class AsyncServletUpnpStreamImpl(protocolFactory: ProtocolFactory?,
 
     @Throws(IOException::class)
     private fun processRestConf() {
-        val nbVideos: Int = DatabaseDAO.countByType(MediaType.VIDEO)
-        val nbMusics: Int = DatabaseDAO.countByType(MediaType.MUSIC)
-        val nbImages: Int = DatabaseDAO.countByType(MediaType.IMAGE)
-        val nbCovers: Int = DatabaseDAO.countByType(MediaType.COVER)
-        val folderVideo: String = DatabaseDAO.selectConf("folder.video")
-        val folderMusic: String = DatabaseDAO.selectConf("folder.music")
-        val folderPhoto: String = DatabaseDAO.selectConf("folder.photo")
-        val folderCover: String = DatabaseDAO.selectConf("folder.cover")
-        val json = "{ \"video\": { \"path\": \"$folderVideo\", \"count\": $nbVideos }, " +
-                "\"music\": { \"path\": \"$folderMusic\", \"count\": $nbMusics }, " +
-                "\"photo\": { \"path\": \"$folderPhoto\", \"count\": $nbImages }, " +
-                "\"cover\": { \"path\": \"$folderCover\", \"count\": $nbCovers } }"
-        responseMessage = StreamResponseMessage(json, MimeType.valueOf("application/json"))
+        val conf = DatabaseDAO.selectConf()
+        val json = mapper.writeValueAsBytes(conf)
+        responseMessage = StreamResponseMessage(json, ContentTypeHeader("application/json;charset:UTF-8"))
+        sendResponse()
     }
 
     @Throws(IOException::class)
     private fun processIndex() {
-        val index = javaClass.getResource("/front/index.html").readText()
+        val index = javaClass.getResource("/front/index.html").readBytes()
         responseMessage = if (index.isEmpty()) {
             logger.warning("index.html_old not loaded")
             null

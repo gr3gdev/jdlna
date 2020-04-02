@@ -1,7 +1,6 @@
 package org.dev.gr3g.jdlna.worker
 
 import org.dev.gr3g.jdlna.config.UpnpServiceConfig
-import org.dev.gr3g.jdlna.dao.DatabaseDAO
 import org.dev.gr3g.jdlna.utils.ServerUtils
 import org.dev.gr3g.jdlna.utils.UpnpUtils
 import org.fourthline.cling.UpnpService
@@ -17,9 +16,8 @@ class UpnpServer : Runnable {
 
     override fun run() {
         try {
-            val port = DatabaseDAO.selectConf("port")
             val upnpService: UpnpService = UpnpServiceImpl(
-                    UpnpServiceConfig(port.toInt()))
+                    UpnpServiceConfig((System.getenv("PORT") ?: "9300").toInt()))
 
             // Asynch search for other devices (most importantly UPnP-enabled
             // routers for port-mapping)
